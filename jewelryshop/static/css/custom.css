@@ -1,1 +1,71 @@
-/* your styles go here */
+/* Header search overlay */
+.header-search-toggle {
+	background: transparent;
+	border: 0;
+	cursor: pointer;
+}
+
+.header-search-toggle:focus {
+	outline: none;
+}
+
+.header-search-overlay {
+	position: fixed;
+	inset: 0;
+	display: none;
+	z-index: 1050;
+}
+
+.header-search-overlay.is-open {
+	display: block;
+}
+
+.header-search-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(17, 24, 39, 0.45);
+}
+
+.header-search-panel {
+	position: absolute;
+	top: 1.25rem;
+	left: 50%;
+	max-width: 820px;
+	width: calc(100% - 2.5rem);
+	background: #ffffff;
+	border: 1px solid #e5e7eb;
+	border-radius: 0.5rem;
+	box-shadow: 0 20px 45px rgba(17, 24, 39, 0.22);
+	padding: 1.25rem 1.25rem 1rem;
+	transform: translate(-50%, -12px);
+	opacity: 0;
+	transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.header-search-overlay.is-open .header-search-panel {
+	transform: translate(-50%, 0);
+	opacity: 1;
+}
+
+.header-search-close-btn {
+	position: absolute;
+	top: 0.55rem;
+	right: 0.6rem;
+	border: 0;
+	background: transparent;
+	color: #6b7280;
+	font-size: 1rem;
+	cursor: pointer;
+}
+
+.header-search-close-btn:hover {
+	color: #111827;
+}
+
+@media (max-width: 767.98px) {
+	.header-search-panel {
+		top: 0.75rem;
+		width: calc(100% - 1.5rem);
+		padding: 1rem 1rem 0.9rem;
+	}
+}

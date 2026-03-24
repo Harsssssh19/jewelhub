@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container">
+  <!-- HERO SECTION-->
+  <section class="py-5 bg-light">
+    <div class="container">
+      <div class="row px-4 px-lg-5 py-lg-4 align-items-center">
+        <div class="col-lg-6">
+          <h1 class="h2 text-uppercase mb-0">Shipping Policy</h1>
+        </div>
+        <div class="col-lg-6 text-lg-right">
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb justify-content-lg-end mb-0 px-0">
+              <li class="breadcrumb-item"><a href="{% url 'store:home' %}">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Shipping Policy</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- POLICY CONTENT -->
+  <section class="py-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+          <div class="card border-0 rounded-0">
+            <div class="card-body p-lg-5">
+              
+              <h3 class="text-uppercase mb-4">Shipping & Delivery</h3>
+              
+              <h5 class="mb-3">Shipping Methods</h5>
+              <p class="text-muted mb-4">
+                We offer several shipping options to meet your needs:
+              </p>
+              <ul class="text-muted mb-4">
+                <li><strong>Standard Shipping (5-7 Business Days):</strong> Free for orders over ₹500</li>
+                <li><strong>Express Shipping (2-3 Business Days):</strong> ₹150 flat rate</li>
+                <li><strong>Overnight Shipping (1 Business Day):</strong> ₹300 flat rate</li>
+              </ul>
+
+              <h5 class="mb-3">Processing Time</h5>
+              <p class="text-muted mb-4">
+                All orders are processed within 1-2 business days. Orders placed on weekends and holidays will be processed on the next business day. Once your order is shipped, you will receive a tracking number via email.
+              </p>
+
+              <h5 class="mb-3">Delivery Address</h5>
+              <p class="text-muted mb-4">
+                We deliver to all locations within India. Please ensure you provide a complete and accurate delivery address to avoid delays or delivery issues.
+              </p>
+
+              <h5 class="mb-3">Shipping Restrictions</h5>
+              <p class="text-muted mb-4">
+                Currently, we do not ship to international addresses. We only deliver within India.
+              </p>
+
+              <h5 class="mb-3">Lost or Damaged Items</h5>
+              <p class="text-muted mb-4">
+                If your package arrives damaged or is lost, please contact us within 48 hours of delivery. We will investigate the issue and provide a replacement or refund as applicable.
+              </p>
+
+              <h5 class="mb-3">Tracking Your Order</h5>
+              <p class="text-muted mb-4">
+                Once your order is shipped, you can track it using the tracking number provided in your order confirmation email. You can also track your order from your account dashboard.
+              </p>
+
+              <h5 class="mb-3">Contact Us</h5>
+              <p class="text-muted">
+                For any shipping-related queries, please <a href="{% url 'store:contact' %}">contact us</a> or reach out to our customer service team.
+              </p>
+
+              <hr class="my-5">
+
+              <p class="text-muted text-small">
+                Last updated: 2025. These policies are subject to change without notice.
+              </p>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+{% endblock content %}

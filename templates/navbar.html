@@ -3,7 +3,7 @@
 <!-- navbar-->
       <header class="header bg-white">
         <div class="container px-0 px-lg-3">
-          <nav class="navbar navbar-expand-lg navbar-light py-3 px-lg-0"><a class="navbar-brand" href="{% url 'store:home' %}"><span class="font-weight-bold text-uppercase text-dark">Jewelry</span></a>
+          <nav class="navbar navbar-expand-lg navbar-light py-3 px-lg-0"><a class="navbar-brand" href="{% url 'store:home' %}"><span class="font-weight-bold text-uppercase text-dark">JewelHub</span></a>
             <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
               <ul class="navbar-nav mr-auto">
@@ -22,38 +22,54 @@
                     
                 </li>
                 <li class="nav-item">
-                  <!-- Link--><a class="nav-link" href="{% url 'store:home' %}">Blog</a>
-                </li>
-                <li class="nav-item">
-                  <!-- Link--><a class="nav-link" href="{% url 'store:home' %}">Contact</a>
+                  <!-- Link--><a class="nav-link" href="{% url 'store:contact' %}">Contact</a>
                 </li>
               </ul>
-              <ul class="navbar-nav ml-auto"> 
-                {% if request.user.is_authenticated %}           
-                  <li class="nav-item"><a class="nav-link" href="{% url 'store:cart' %}"> <i class="fas fa-dolly-flatbed mr-1 text-gray"></i>Cart<small class="text-gray">({{cart_items.count}})</small></a></li>
-                  <li class="nav-item"><a class="nav-link" href="#"> <i class="far fa-heart mr-1"></i><small class="text-gray"> (0)</small></a></li>
-                  {% comment %} <li class="nav-item"><a class="nav-link" href="#"> <i class="fas fa-user-alt mr-1 text-gray"></i>My Account</a></li> {% endcomment %}
-
-                  <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" id="pagesDropdown" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-user-alt mr-1 text-gray"></i>My Account</a></a>
-                  
-                  <div class="dropdown-menu mt-3" aria-labelledby="pagesDropdown">
-                    
+              <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                  <button class="nav-link header-search-toggle" type="button" aria-label="Open search" aria-controls="headerSearchOverlay" aria-expanded="false">
+                    <i class="fas fa-search mr-1 text-gray"></i>Search
+                  </button>
+                </li>
+                {% if request.user.is_authenticated %}
+                  <li class="nav-item"><a class="nav-link" href="{% url 'store:cart' %}"><i class="fas fa-dolly-flatbed mr-1 text-gray"></i>Cart<small class="text-gray">({{cart_items.count}})</small></a></li>
+                  <li class="nav-item"><a class="nav-link" href="#"><i class="far fa-heart mr-1"></i><small class="text-gray"> (0)</small></a></li>
+                  <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" id="accountDropdown" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-user-alt mr-1 text-gray"></i>My Account</a>
+                    <div class="dropdown-menu mt-3" aria-labelledby="accountDropdown">
                       <a class="dropdown-item border-0 transition-link" href="{% url 'store:profile' %}">Profile</a>
                       <a class="dropdown-item border-0 transition-link" href="{% url 'store:cart' %}">Cart</a>
                       <a class="dropdown-item border-0 transition-link" href="{% url 'store:orders' %}">Orders</a>
                       <a class="dropdown-item border-0 transition-link" href="{% url 'store:password-change' %}">Change Password</a>
-
-                    <hr>
-                    <a class="dropdown-item border-0 transition-link" href="{% url 'store:logout' %}">Log Out</a>
-                    
-                </li>
+                      <hr>
+                      <a class="dropdown-item border-0 transition-link" href="{% url 'store:logout' %}">Log Out</a>
+                    </div>
+                  </li>
                 {% else %}
                   <li class="nav-item"><a class="nav-link" href="{% url 'store:login' %}">Login</a></li>
                   <li class="nav-item"><a class="nav-link" href="{% url 'store:register' %}">Create Account</a></li>
-                {% endif %}   
+                {% endif %}
               </ul>
             </div>
           </nav>
+
+          <div class="header-search-overlay" id="headerSearchOverlay" aria-hidden="true">
+            <div class="header-search-backdrop header-search-close"></div>
+            <div class="header-search-panel" role="dialog" aria-modal="true" aria-label="Search products">
+              <button class="header-search-close-btn header-search-close" type="button" aria-label="Close search">
+                <i class="fas fa-times"></i>
+              </button>
+              <h5 class="text-uppercase mb-3">Search Products</h5>
+              <form action="{% url 'store:shop' %}" method="get" class="header-search-form">
+                <div class="input-group input-group-lg">
+                  <input class="form-control" type="search" name="q" placeholder="Search by product name or category" aria-label="Search">
+                  <div class="input-group-append">
+                    <button class="btn btn-dark" type="submit"><i class="fas fa-search mr-2"></i>Search</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       </header>
 

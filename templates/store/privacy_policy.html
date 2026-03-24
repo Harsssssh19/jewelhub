@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container">
+  <!-- HERO SECTION-->
+  <section class="py-5 bg-light">
+    <div class="container">
+      <div class="row px-4 px-lg-5 py-lg-4 align-items-center">
+        <div class="col-lg-6">
+          <h1 class="h2 text-uppercase mb-0">Privacy Policy</h1>
+        </div>
+        <div class="col-lg-6 text-lg-right">
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb justify-content-lg-end mb-0 px-0">
+              <li class="breadcrumb-item"><a href="{% url 'store:home' %}">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Privacy Policy</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- POLICY CONTENT -->
+  <section class="py-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+          <div class="card border-0 rounded-0">
+            <div class="card-body p-lg-5">
+              
+              <h3 class="text-uppercase mb-4">Privacy Policy</h3>
+
+              <h5 class="mb-3">Introduction</h5>
+              <p class="text-muted mb-4">
+                At Jewelry Shop, we are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website.
+              </p>
+
+              <h5 class="mb-3">Information We Collect</h5>
+              <p class="text-muted mb-4">
+                We collect information you provide directly to us such as when you create an account, make a purchase, or contact us. This includes your name, email address, phone number, shipping address, and payment information.
+              </p>
+
+              <h5 class="mb-3">How We Use Your Information</h5>
+              <p class="text-muted mb-4">
+                We use the information we collect to:
+              </p>
+              <ul class="text-muted mb-4">
+                <li>Process your orders and send you related information</li>
+                <li>Respond to your inquiries and customer service requests</li>
+                <li>Send you promotional emails and updates (with your consent)</li>
+                <li>Improve our website and services</li>
+                <li>Prevent fraudulent activities</li>
+              </ul>
+
+              <h5 class="mb-3">Data Protection</h5>
+              <p class="text-muted mb-4">
+                We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. Your payment information is encrypted and processed securely.
+              </p>
+
+              <h5 class="mb-3">Third-Party Sharing</h5>
+              <p class="text-muted mb-4">
+                We do not sell, trade, or rent your personal information to third parties. We may share your information with trusted partners who assist us in operating our website or conducting our business, as long as they agree to keep this information confidential.
+              </p>
+
+              <h5 class="mb-3">Cookies</h5>
+              <p class="text-muted mb-4">
+                Our website uses cookies to enhance your browsing experience. Cookies are small data files stored on your device that help us remember your preferences and improve your experience on our site.
+              </p>
+
+              <h5 class="mb-3">Your Rights</h5>
+              <p class="text-muted mb-4">
+                You have the right to access, update, or delete your personal information at any time. You can also opt out of receiving promotional emails by clicking the unsubscribe link in our emails.
+              </p>
+
+              <h5 class="mb-3">Contact Us</h5>
+              <p class="text-muted">
+                If you have any questions about our Privacy Policy, please <a href="{% url 'store:contact' %}">contact us</a>.
+              </p>
+
+              <hr class="my-5">
+
+              <p class="text-muted text-small">
+                Last updated: 2025. This Privacy Policy may be updated periodically without notice.
+              </p>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+{% endblock content %}

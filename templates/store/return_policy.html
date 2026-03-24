@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container">
+  <!-- HERO SECTION-->
+  <section class="py-5 bg-light">
+    <div class="container">
+      <div class="row px-4 px-lg-5 py-lg-4 align-items-center">
+        <div class="col-lg-6">
+          <h1 class="h2 text-uppercase mb-0">Return Policy</h1>
+        </div>
+        <div class="col-lg-6 text-lg-right">
+          <nav aria-label="breadcrumb">
+            <ol class="breadcrumb justify-content-lg-end mb-0 px-0">
+              <li class="breadcrumb-item"><a href="{% url 'store:home' %}">Home</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Return Policy</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- POLICY CONTENT -->
+  <section class="py-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+          <div class="card border-0 rounded-0">
+            <div class="card-body p-lg-5">
+              
+              <h3 class="text-uppercase mb-4">Returns & Refunds</h3>
+
+              <h5 class="mb-3">Return Window</h5>
+              <p class="text-muted mb-4">
+                Jewelry items can be returned within 30 days of purchase. The item must be unused, in its original condition, and in the original packaging.
+              </p>
+
+              <h5 class="mb-3">Conditions for Return</h5>
+              <p class="text-muted mb-4">
+                To be eligible for a return:
+              </p>
+              <ul class="text-muted mb-4">
+                <li>Item must be unused and unworn</li>
+                <li>All original tags and packaging must be intact</li>
+                <li>Item must not show signs of wear or damage</li>
+                <li>Return must be initiated within 30 days of purchase</li>
+              </ul>
+
+              <h5 class="mb-3">How to Return</h5>
+              <p class="text-muted mb-4">
+                To initiate a return:
+              </p>
+              <ol class="text-muted mb-4">
+                <li>Log in to your account and navigate to your orders</li>
+                <li>Select the item you wish to return and click "Return Item"</li>
+                <li>Follow the return instructions and generate a return label</li>
+                <li>Ship the item back to us within 7 days</li>
+              </ol>
+
+              <h5 class="mb-3">Refund Processing</h5>
+              <p class="text-muted mb-4">
+                Once we receive and inspect your returned item, we will process your refund within 5-7 business days. Refunds will be issued to your original payment method.
+              </p>
+
+              <h5 class="mb-3">Shipping Costs</h5>
+              <p class="text-muted mb-4">
+                Return shipping is free for defective or incorrect items. If you're returning an item due to your preference, you may be responsible for return shipping costs.
+              </p>
+
+              <h5 class="mb-3">Damaged or Defective Items</h5>
+              <p class="text-muted mb-4">
+                If you receive a damaged or defective item, please contact us immediately within 48 hours of delivery. We will arrange a replacement or full refund at no cost to you.
+              </p>
+
+              <h5 class="mb-3">Exchanges</h5>
+              <p class="text-muted mb-4">
+                If you'd like to exchange an item for a different size, color, or style, please contact our customer service team at <a href="{% url 'store:contact' %}">contact us</a>.
+              </p>
+
+              <h5 class="mb-3">Non-Returnable Items</h5>
+              <p class="text-muted mb-4">
+                Custom-made or personalized jewelry items cannot be returned unless they are defective or damaged.
+              </p>
+
+              <hr class="my-5">
+
+              <p class="text-muted text-small">
+                Last updated: 2025. Our return policy may change at any time.
+              </p>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+{% endblock content %}

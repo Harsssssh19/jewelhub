@@ -16,12 +16,14 @@ urlpatterns = [
     path('minus-cart/<int:cart_id>/', views.minus_cart, name="minus-cart"),
     path('cart/', views.cart, name="cart"),
     path('checkout/', views.checkout, name="checkout"),
+    path('payment/', views.payment, name="payment"),
+    path('payment-verify/', views.payment_verify, name="payment-verify"),
+    path('payment-failure/', views.payment_failure, name="payment-failure"),
     path('orders/', views.orders, name="orders"),
 
     #URL for Products
     path('product/<slug:slug>/', views.detail, name="product-detail"),
     path('categories/', views.all_categories, name="all-categories"),
-    path('<slug:slug>/', views.category_products, name="category-products"),
 
     path('shop/', views.shop, name="shop"),
 
@@ -31,7 +33,7 @@ urlpatterns = [
     path('accounts/profile/', views.profile, name="profile"),
     path('accounts/add-address/', views.AddressView.as_view(), name="add-address"),
     path('accounts/remove-address/<int:id>/', views.remove_address, name="remove-address"),
-    path('accounts/logout/', auth_views.LogoutView.as_view(next_page='store:login'), name="logout"),
+    path('accounts/logout/', views.LogoutView.as_view(), name="logout"),
 
     path('accounts/password-change/', auth_views.PasswordChangeView.as_view(template_name='account/password_change.html', form_class=PasswordChangeForm, success_url='/accounts/password-change-done/'), name="password-change"),
     path('accounts/password-change-done/', auth_views.PasswordChangeDoneView.as_view(template_name='account/password_change_done.html'), name="password-change-done"),
@@ -42,7 +44,15 @@ urlpatterns = [
     path('accounts/password-reset-complete/', auth_views.PasswordResetCompleteView.as_view(template_name='account/password_reset_complete.html'), name="password_reset_complete"),
 
     path('product/test/', views.test, name="test"),
-    path('success', views.success, name='payment_status')
 
-    
+    # Policy and Info Pages
+    path('contact/', views.contact, name="contact"),
+    path('shipping-policy/', views.shipping_policy, name="shipping-policy"),
+    path('privacy-policy/', views.privacy_policy, name="privacy-policy"),
+    path('return-policy/', views.return_policy, name="return-policy"),
+    path('terms-conditions/', views.terms_conditions, name="terms-conditions"),
+
+    # Catch-all pattern for category products - MUST be last
+    path('<slug:slug>/', views.category_products, name="category-products"),
+
 ]

@@ -1,7 +1,10 @@
 import django
 import razorpay
+import json
+import hmac
+import hashlib
 from django.contrib.auth.models import User
-from store.models import Address, Cart, Category, Order, Product
+from store.models import Address, Cart, Category, Order, Product, Payment
 from django.shortcuts import redirect, render, get_object_or_404
 from .forms import RegistrationForm, AddressForm
 from django.contrib import messages
@@ -9,6 +12,12 @@ from django.views import View
 import decimal
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator # for Class Based Views
+from django.contrib.auth import logout as auth_logout
+from django.conf import settings
+from django.http import JsonResponse
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.db.models import Q
 
 
 # Create your views here.
@@ -99,6 +108,23 @@ def remove_address(request, id):
     messages.success(request, "Address removed.")
     return redirect('store:profile')
 
+
+@method_decorator(login_required, name='dispatch')
+class LogoutView(View):
+    """
+    Custom logout view that displays a confirmation page
+    GET: Shows logout confirmation page
+    POST: Logs out the user and redirects to logout success page
+    """
+    def get(self, request):
+        return render(request, 'account/logout.html')
+    
+    def post(self, request):
+        auth_logout(request)
+        messages.success(request, "You have been successfully logged out!")
+        return render(request, 'account/logout_success.html')
+
+
 @login_required
 def add_to_cart(request):
     user = request.user
@@ -178,18 +204,194 @@ def minus_cart(request, cart_id):
 
 @login_required
 def checkout(request):
+    """Redirect to payment page with selected address"""
     user = request.user
     address_id = request.GET.get('address')
+    payment_method = request.GET.get('payment', 'online')
     
-    address = get_object_or_404(Address, id=address_id)
-    # Get all the products of User in Cart
-    cart = Cart.objects.filter(user=user)
-    for c in cart:
-        # Saving all the products from Cart to Order
-        Order(user=user, address=address, product=c.product, quantity=c.quantity).save()
-        # And Deleting from Cart
-        c.delete()
-    return redirect('store:orders')
+    try:
+        address = get_object_or_404(Address, id=address_id, user=user)
+    except:
+        messages.error(request, "Please select a valid address.")
+        return redirect('store:cart')
+    
+    # Get cart items
+    cart_items = Cart.objects.filter(user=user)
+    if not cart_items.exists():
+        messages.error(request, "Your cart is empty.")
+        return redirect('store:cart')
+    
+    # Calculate total amount
+    total_amount = decimal.Decimal(0)
+    shipping_amount = decimal.Decimal(10)
+    for item in cart_items:
+        total_amount += (item.quantity * item.product.price)
+    
+    total_amount += shipping_amount
+    
+    # Store in session for payment processing
+    request.session['cart_items'] = list(cart_items.values_list('id', flat=True))
+    request.session['address_id'] = address_id
+    request.session['total_amount'] = str(total_amount)
+    
+    if payment_method == 'cod':
+        # Cash on Delivery - Create orders directly
+        return process_cod_order(request, cart_items, address)
+    else:
+        # Online Payment - Redirect to payment page
+        return redirect('store:payment')
+
+
+def process_cod_order(request, cart_items, address):
+    """Process Cash on Delivery order"""
+    user = request.user
+    try:
+        for cart_item in cart_items:
+            Order(
+                user=user,
+                address=address,
+                product=cart_item.product,
+                quantity=cart_item.quantity,
+                payment_status=False
+            ).save()
+            cart_item.delete()
+        
+        messages.success(request, "Order placed successfully! You will pay on delivery.")
+        return redirect('store:orders')
+    except Exception as e:
+        messages.error(request, f"Error processing order: {str(e)}")
+        return redirect('store:cart')
+
+
+@login_required
+def payment(request):
+    """Display payment page with Razorpay checkout"""
+    user = request.user
+    
+    # Get data from session
+    cart_item_ids = request.session.get('cart_items', [])
+    address_id = request.session.get('address_id')
+    total_amount = decimal.Decimal(request.session.get('total_amount', 0))
+    
+    if not cart_item_ids or not address_id:
+        messages.error(request, "Session expired. Please try again.")
+        return redirect('store:cart')
+    
+    try:
+        address = Address.objects.get(id=address_id, user=user)
+        cart_items = Cart.objects.filter(id__in=cart_item_ids, user=user)
+        
+        if not cart_items.exists():
+            messages.error(request, "Cart items not found.")
+            return redirect('store:cart')
+        
+        # Initialize Razorpay client
+        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
+        
+        # Create Razorpay order
+        razorpay_order = client.order.create(dict(
+            amount=int(total_amount * 100),  # Amount in paise
+            currency=settings.RAZORPAY_CURRENCY,
+            payment_capture='0'
+        ))
+        
+        # Store order details in session
+        request.session['razorpay_order_id'] = razorpay_order['id']
+        
+        context = {
+            'razorpay_key': settings.RAZORPAY_KEY_ID,
+            'razorpay_order_id': razorpay_order['id'],
+            'amount': int(total_amount * 100),
+            'user_name': user.get_full_name() or user.username,
+            'user_email': user.email,
+            'user_phone': user.username,
+            'currency': settings.RAZORPAY_CURRENCY,
+            'cart_items': cart_items,
+            'address': address,
+            'total_amount': total_amount,
+        }
+        
+        return render(request, 'store/payment.html', context)
+    
+    except Address.DoesNotExist:
+        messages.error(request, "Address not found.")
+        return redirect('store:cart')
+    except Exception as e:
+        messages.error(request, f"Error initiating payment: {str(e)}")
+        return redirect('store:cart')
+
+
+@login_required
+def payment_verify(request):
+    """Verify Razorpay payment and create orders"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        razorpay_order_id = data.get('razorpay_order_id')
+        razorpay_payment_id = data.get('razorpay_payment_id')
+        razorpay_signature = data.get('razorpay_signature')
+        
+        # Verify signature
+        signature_data = f'{razorpay_order_id}|{razorpay_payment_id}'
+        expected_signature = hmac.new(
+            settings.RAZORPAY_SECRET_KEY.encode(),
+            signature_data.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        if expected_signature != razorpay_signature:
+            return JsonResponse({'error': 'Payment verification failed'}, status=400)
+        
+        # Get cart data from session
+        user = request.user
+        cart_item_ids = request.session.get('cart_items', [])
+        address_id = request.session.get('address_id')
+        total_amount = decimal.Decimal(request.session.get('total_amount', 0))
+        
+        if not cart_item_ids or not address_id:
+            return JsonResponse({'error': 'Session expired'}, status=400)
+        
+        address = Address.objects.get(id=address_id, user=user)
+        cart_items = Cart.objects.filter(id__in=cart_item_ids, user=user)
+        
+        # Create orders and update payment status
+        for cart_item in cart_items:
+            order = Order(
+                user=user,
+                address=address,
+                product=cart_item.product,
+                quantity=cart_item.quantity,
+                payment_status=True,
+                razorpay_order_id=razorpay_order_id,
+                razorpay_payment_id=razorpay_payment_id,
+                razorpay_signature=razorpay_signature
+            )
+            order.save()
+            cart_item.delete()
+        
+        # Clear session
+        if 'cart_items' in request.session:
+            del request.session['cart_items']
+        if 'address_id' in request.session:
+            del request.session['address_id']
+        if 'total_amount' in request.session:
+            del request.session['total_amount']
+        if 'razorpay_order_id' in request.session:
+            del request.session['razorpay_order_id']
+        
+        return JsonResponse({'success': True, 'redirect_url': '/orders/'})
+    
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+def payment_failure(request):
+    """Handle payment failure"""
+    messages.error(request, "Payment failed. Please try again.")
+    return redirect('store:cart')
 
 
 @login_required
@@ -199,69 +401,103 @@ def orders(request):
 
 
 def shop(request):
-    return render(request, 'store/shop.html')
+    query = request.GET.get('q', '').strip()
+    category_slug = request.GET.get('category', '').strip()
+
+    products = Product.objects.filter(is_active=True)
+
+    if query:
+        products = products.filter(
+            Q(title__icontains=query)
+            | Q(short_description__icontains=query)
+            | Q(sku__icontains=query)
+            | Q(category__title__icontains=query)
+        )
+
+    selected_category = None
+    if category_slug:
+        products = products.filter(category__slug=category_slug)
+        selected_category = Category.objects.filter(is_active=True, slug=category_slug).first()
+
+    categories = Category.objects.filter(is_active=True)
+
+    context = {
+        'products': products.order_by('-created_at'),
+        'categories': categories,
+        'query': query,
+        'selected_category': selected_category,
+        'results_count': products.count(),
+    }
+    return render(request, 'store/shop.html', context)
 
 
 def test(request):
     return render(request, 'store/test.html')
 
-def pay(request): 
-   error_message = None        
-   if request.method == 'POST':
-        name = request.POST.get('name')
-        phone = request.POST.get('phone')
-        email = request.POST.get('email')
-        modelselection = request.POST.get('modelselection')
-        amount = request.POST.get('amount')
-        message = request.POST.get('message')
-        client = razorpay.Client(
-                auth=('rzp_test_VQhEfe2NCXbbwI', '2ibreCYL78DA3kjOhobCvz0f'))
 
-        razorpay_payment = client.order.create(
-                dict(amount=(int(amount)*100), currency='INR'))
+# Policy and Info Pages
+def contact(request):
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        message = request.POST.get('message', '').strip()
 
-        order_id = razorpay_payment['id']
+        if not name or not email or not message:
+            messages.error(request, "Please fill in all required fields.")
+            return redirect('store:contact')
 
-        booking= pay.objects.create(
-            name=name,
-            phone=phone,
-            email = email,
-            modelselection = modelselection,
-            amount = amount,
-            message =message,
-            order_id = order_id
-
+        subject = f"New Contact Form Message from {name}"
+        plain_body = (
+            f"Name: {name}\n"
+            f"Email: {email}\n"
+            f"Phone: {phone or 'Not provided'}\n\n"
+            f"Message:\n{message}"
         )
-        booking.save()
-        razorpay_payment['name'] = name
-        razorpay_payment['amount']= amount 
-        razorpay_payment['order_id'] = order_id
-        form = pay(request.POST or None)
-        return render(request, 'book.html', {'razorpay_payment': razorpay_payment})
-   form = pay()
-   return render(request,'book.html', {'form': form, 'error_message':error_message})
 
-def success(request):
-    response = request.POST
-    params_dict = {
-        'razorpay_order_id': response['razorpay_order_id'],
-        'razorpay_payment_id': response['razorpay_payment_id'],
-        'razorpay_signature': response['razorpay_signature'],
-    }
+        html_body = render_to_string(
+            'emails/contact_notification.html',
+            {
+                'name': name,
+                'email': email,
+                'phone': phone or 'Not provided',
+                'message': message,
+            }
+        )
 
-    client = razorpay.Client(
-        auth=('rzp_test_VQhEfe2NCXbbwI', '2ibreCYL78DA3kjOhobCvz0f'))
+        try:
+            email_message = EmailMultiAlternatives(
+                subject=subject,
+                body=plain_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[settings.CONTACT_RECEIVER_EMAIL],
+                reply_to=[email],
+            )
+            email_message.attach_alternative(html_body, "text/html")
+            email_message.send(fail_silently=False)
+            messages.success(request, "Thank you for contacting us! Your message has been sent successfully.")
+        except Exception as e:
+            if settings.DEBUG:
+                messages.error(request, f"Unable to send your message right now: {e}")
+            else:
+                messages.error(request, "Unable to send your message right now. Please try again later.")
 
-    try:
-        status = client.utility.verify_payment_signature(params_dict)
-        razorpay_save = pay.objects.get(
-            order_id=response['razorpay_order_id'])
-        razorpay_save.razorpay_payment_id = response['razorpay_payment_id']
-        razorpay_save.paid = True
-        razorpay_save.save()
-        
-        
-    except Exception as e:
-        # Handle exceptions, for example, logging the error
-        print(f"Error occurred: {str(e)}")
-    return render(request, 'success.html', {'status': False})
+        return redirect('store:contact')
+    
+    return render(request, 'store/contact.html')
+
+
+def shipping_policy(request):
+    return render(request, 'store/shipping_policy.html')
+
+
+def privacy_policy(request):
+    return render(request, 'store/privacy_policy.html')
+
+
+def return_policy(request):
+    return render(request, 'store/return_policy.html')
+
+
+def terms_conditions(request):
+    return render(request, 'store/terms_conditions.html')

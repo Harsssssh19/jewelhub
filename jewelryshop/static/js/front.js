@@ -63,13 +63,51 @@ $(function () {
          e.preventDefault();
       });
 
+
+      /* ===============================================================
+           HEADER SEARCH OVERLAY
+        =============================================================== */
+      var $searchOverlay = $('#headerSearchOverlay');
+      var $searchToggle = $('.header-search-toggle');
+
+      function openHeaderSearch() {
+          $searchOverlay.addClass('is-open').attr('aria-hidden', 'false');
+          $searchToggle.attr('aria-expanded', 'true');
+          setTimeout(function () {
+              $searchOverlay.find('input[type="search"]').trigger('focus');
+          }, 120);
+      }
+
+      function closeHeaderSearch() {
+          $searchOverlay.removeClass('is-open').attr('aria-hidden', 'true');
+          $searchToggle.attr('aria-expanded', 'false');
+      }
+
+      $searchToggle.on('click', function () {
+          if ($searchOverlay.hasClass('is-open')) {
+              closeHeaderSearch();
+          } else {
+              openHeaderSearch();
+          }
+      });
+
+      $(document).on('click', '.header-search-close', function () {
+          closeHeaderSearch();
+      });
+
+      $(document).on('keydown', function (e) {
+          if (e.key === 'Escape' && $searchOverlay.hasClass('is-open')) {
+              closeHeaderSearch();
+          }
+      });
+
 });
 
 
 /* ===============================================================
      COUNTRY SELECT BOX FILLING
   =============================================================== */
-$.getJSON('js/countries.json', function (data) {
+$.getJSON('/static/js/countries.json', function (data) {
     $.each(data, function (key, value) {
         var selectOption = "<option value='" + value.name + "' data-dial-code='" + value.dial_code + "'>" + value.name + "</option>";
         $("select.country").append(selectOption);
