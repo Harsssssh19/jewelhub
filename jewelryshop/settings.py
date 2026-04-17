@@ -31,9 +31,35 @@ load_env_file(BASE_DIR / ".env")
 SECRET_KEY = 'django-insecure-3%y3laftm62q0zaj+s7#p-xqq9(&#q+)s8)p-&#&bz*0$!xu$0'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = []
+
+def parse_hosts(raw_hosts):
+    return [host.strip() for host in raw_hosts.split(',') if host.strip()]
+
+
+ALLOWED_HOSTS = parse_hosts(os.getenv('ALLOWED_HOSTS', ''))
+
+# Railway provides public domain values via env vars; include them automatically.
+railway_public_domain = os.getenv('RAILWAY_PUBLIC_DOMAIN', '').strip()
+if railway_public_domain and railway_public_domain not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(railway_public_domain)
+
+railway_static_url = os.getenv('RAILWAY_STATIC_URL', '').strip()
+if railway_static_url:
+    railway_host = railway_static_url.replace('https://', '').replace('http://', '').strip('/')
+    if railway_host and railway_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(railway_host)
+
+if DEBUG and not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+
+CSRF_TRUSTED_ORIGINS = []
+for host in ALLOWED_HOSTS:
+    if host.startswith('http://') or host.startswith('https://'):
+        CSRF_TRUSTED_ORIGINS.append(host.rstrip('/'))
+    else:
+        CSRF_TRUSTED_ORIGINS.append(f'https://{host}')
 
 
 # Application definition
