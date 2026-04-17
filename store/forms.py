@@ -1,14 +1,11 @@
 from django.contrib.auth import password_validation
+from django.contrib.auth import authenticate
 from store.models import Address
 from django import forms
-import django
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, UsernameField, PasswordChangeForm, PasswordResetForm, SetPasswordForm
-from django.db import models
-from django.db.models import fields
-from django.forms import widgets
-from django.forms.fields import CharField
-from django.utils.translation import gettext, gettext_lazy as _
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, PasswordChangeForm, PasswordResetForm, SetPasswordForm
+from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import ValidationError
 
 
 
@@ -25,8 +22,54 @@ class RegistrationForm(UserCreationForm):
 
 
 class LoginForm(AuthenticationForm):
-    username = UsernameField(widget=forms.TextInput(attrs={'autofocus': True, 'class': 'form-control'}))
-    password = forms.CharField(label=_("Password"), strip=False, widget=forms.PasswordInput(attrs={'autocomplete':'current-password', 'class':'form-control'}))
+    username = forms.CharField(
+        label=_("Email or Username"),
+        widget=forms.TextInput(
+            attrs={
+                'autofocus': True,
+                'class': 'form-control',
+                'placeholder': 'Email address or username',
+            }
+        ),
+    )
+    password = forms.CharField(
+        label=_("Password"),
+        strip=False,
+        widget=forms.PasswordInput(
+            attrs={'autocomplete': 'current-password', 'class': 'form-control'}
+        ),
+    )
+
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        "invalid_login": _(
+            "Please enter a correct email/username and password. Note that both fields may be case-sensitive."
+        ),
+    }
+
+    def clean(self):
+        login_value = self.cleaned_data.get("username")
+        password = self.cleaned_data.get("password")
+
+        if login_value and password:
+            resolved_username = login_value
+
+            # Support password login by email as well as username.
+            user = User.objects.filter(email__iexact=login_value).first()
+            if user:
+                resolved_username = user.username
+
+            self.user_cache = authenticate(
+                self.request, username=resolved_username, password=password
+            )
+            if self.user_cache is None:
+                raise ValidationError(
+                    self.error_messages["invalid_login"],
+                    code="invalid_login",
+                )
+            self.confirm_login_allowed(self.user_cache)
+
+        return self.cleaned_data
 
 
 class AddressForm(forms.ModelForm):
