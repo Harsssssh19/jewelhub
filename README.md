@@ -7,7 +7,7 @@
 <p align="center">
 	<img alt="Python" src="https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white">
 	<img alt="Django" src="https://img.shields.io/badge/Django-6.0.3-092E20?logo=django&logoColor=white">
-	<img alt="SQLite" src="https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white">
+	<img alt="Supabase" src="https://img.shields.io/badge/Database-Supabase-3ECF8E?logo=supabase&logoColor=white">
 	<img alt="Razorpay" src="https://img.shields.io/badge/Payments-Razorpay-0C2451">
 	<img alt="Bootstrap" src="https://img.shields.io/badge/UI-Bootstrap-7952B3?logo=bootstrap&logoColor=white">
 </p>
@@ -70,7 +70,7 @@ JewelHub is a complete jewellery e-commerce application focused on:
 | Layer | Technology |
 |---|---|
 | Backend | Django 6.0.3 |
-| Database | SQLite (default) |
+| Database | Supabase PostgreSQL |
 | Payments | Razorpay |
 | Email | SMTP (Gmail) |
 | Frontend | Bootstrap + jQuery + custom CSS |
@@ -139,10 +139,21 @@ EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USE_TLS=True
-EMAIL_HOST_USER=jakeandbrody2@gmail.com
+EMAIL_USE_SSL=False
+EMAIL_TIMEOUT=30
+EMAIL_HOST_USER=YOUR_SMTP_USERNAME
 EMAIL_HOST_PASSWORD=YOUR_GMAIL_APP_PASSWORD
-DEFAULT_FROM_EMAIL=jakeandbrody2@gmail.com
-CONTACT_RECEIVER_EMAIL=harsh.c.jangid@gmail.com
+DEFAULT_FROM_EMAIL=YOUR_FROM_EMAIL
+CONTACT_RECEIVER_EMAIL=YOUR_RECEIVER_EMAIL
+
+DATABASE_URL=postgresql://postgres.<project-ref>:<db-password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require
+# Optional alternative if DATABASE_URL is not set
+DB_NAME=postgres
+DB_USER=postgres.<project-ref>
+DB_PASSWORD=YOUR_SUPABASE_DB_PASSWORD
+DB_HOST=aws-0-<region>.pooler.supabase.com
+DB_PORT=6543
+DB_SSL_REQUIRE=True
 ```
 
 ### 5. Apply migrations and run server
