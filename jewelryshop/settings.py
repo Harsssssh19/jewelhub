@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+from urllib.parse import urlparse
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
@@ -100,6 +101,10 @@ WSGI_APPLICATION = 'jewelryshop.wsgi.application'
 
 database_url = os.getenv('DATABASE_URL', '').strip()
 
+supabase_pooler_url = os.getenv('SUPABASE_POOLER_URL', '').strip()
+if supabase_pooler_url:
+    database_url = supabase_pooler_url
+
 if not database_url:
     db_name = os.getenv('DB_NAME', '').strip()
     db_user = os.getenv('DB_USER', '').strip()
@@ -114,6 +119,15 @@ if not database_url:
     raise ImproperlyConfigured(
         'DATABASE_URL is required for Supabase deployment. Set DATABASE_URL or the DB_* fallback variables.'
     )
+
+parsed_database_url = urlparse(database_url)
+if parsed_database_url.hostname and parsed_database_url.hostname.endswith('.supabase.co'):
+    if parsed_database_url.port in (None, 5432):
+        raise ImproperlyConfigured(
+            'Use the Supabase pooler connection string for Vercel/serverless deployments. '
+            'The direct Supabase DB host on port 5432 is not supported here. '
+            'Set SUPABASE_POOLER_URL or DATABASE_URL to the pooler host on port 6543.'
+        )
 
 DATABASES = {
     'default': dj_database_url.parse(
