@@ -13,11 +13,18 @@ import decimal
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator # for Class Based Views
 from django.contrib.auth import logout as auth_logout
+from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.http import JsonResponse
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
 from django.db.models import Q
+from .email_utils import (
+    send_order_admin_alert,
+    send_order_email,
+    send_password_change_admin_alert,
+    send_password_change_email,
+    send_registration_admin_alert,
+    send_registration_email,
+)
 
 
 # Create your views here.
@@ -70,8 +77,11 @@ class RegistrationView(View):
     def post(self, request):
         form = RegistrationForm(request.POST)
         if form.is_valid():
+            user = form.save()
+            send_registration_email(user)
+            send_registration_admin_alert(user)
             messages.success(request, "Congratulations! Registration Successful!")
-            form.save()
+            return redirect('store:login')
         return render(request, 'account/register.html', {'form': form})
         
 
@@ -123,6 +133,15 @@ class LogoutView(View):
         auth_logout(request)
         messages.success(request, "You have been successfully logged out!")
         return render(request, 'account/logout_success.html')
+
+
+class PasswordChangeNotifyView(auth_views.PasswordChangeView):
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        send_password_change_email(self.request.user)
+        send_password_change_admin_alert(self.request.user)
+        messages.success(self.request, "Your password was changed successfully.")
+        return response
 
 
 @login_required
@@ -247,13 +266,16 @@ def process_cod_order(request, cart_items, address):
     user = request.user
     try:
         for cart_item in cart_items:
-            Order(
+            order = Order(
                 user=user,
                 address=address,
                 product=cart_item.product,
                 quantity=cart_item.quantity,
                 payment_status=False
-            ).save()
+            )
+            order.save()
+            send_order_email(order, status_label="Order placed")
+            send_order_admin_alert(order, action_label="New COD order placed")
             cart_item.delete()
         
         messages.success(request, "Order placed successfully! You will pay on delivery.")
@@ -369,6 +391,8 @@ def payment_verify(request):
                 razorpay_signature=razorpay_signature
             )
             order.save()
+            send_order_email(order, status_label="Payment received and order placed")
+            send_order_admin_alert(order, action_label="New paid order placed")
             cart_item.delete()
         
         # Clear session

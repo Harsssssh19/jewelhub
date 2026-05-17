@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Address, Category, Product, Cart, Order
+from .email_utils import send_order_admin_alert, send_order_status_update_email
 
 # Register your models here.
 class AddressAdmin(admin.ModelAdmin):
@@ -40,6 +41,17 @@ class OrderAdmin(admin.ModelAdmin):
     list_filter = ('status', 'ordered_date')
     list_per_page = 20
     search_fields = ('user', 'product')
+
+    def save_model(self, request, obj, form, change):
+        previous_status = None
+        if change and obj.pk:
+            previous_status = Order.objects.filter(pk=obj.pk).values_list('status', flat=True).first()
+
+        super().save_model(request, obj, form, change)
+
+        if previous_status and previous_status != obj.status:
+            send_order_status_update_email(obj, previous_status)
+            send_order_admin_alert(obj, action_label=f"Order {obj.status.lower()}")
 
 
 admin.site.register(Address, AddressAdmin)
