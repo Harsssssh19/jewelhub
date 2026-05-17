@@ -524,6 +524,7 @@ def shop(request):
         'product_image',
         'short_description',
         'sku',
+        'detail_description',
         'category__title',
         'category__slug',
     )
@@ -532,8 +533,10 @@ def shop(request):
         products = products.filter(
             Q(title__icontains=query)
             | Q(short_description__icontains=query)
+            | Q(detail_description__icontains=query)
             | Q(sku__icontains=query)
             | Q(category__title__icontains=query)
+            | Q(category__description__icontains=query)
         )
 
     selected_category = None
@@ -544,7 +547,7 @@ def shop(request):
     categories = Category.objects.filter(is_active=True).only('title', 'slug')
 
     context = {
-        'products': products.select_related('category').order_by('-created_at'),
+        'products': products.distinct().order_by('-created_at'),
         'categories': categories,
         'query': query,
         'selected_category': selected_category,
