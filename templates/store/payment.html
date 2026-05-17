@@ -120,11 +120,6 @@
               </button>
             </div>
 
-            <div id="payment-countdown-box" class="alert alert-warning d-none mb-4" role="alert">
-              <strong>Auto-complete enabled</strong><br>
-              <small>Payment will be simulated in <span id="payment-countdown-value">{{ payment_countdown_seconds }}</span> seconds.</small>
-            </div>
-
             <!-- Secure Badge -->
             <div class="text-center">
               <small class="text-muted">
@@ -144,6 +139,88 @@
   </section>
 </div>
 
+<div id="payment-countdown-overlay" class="d-none">
+  <div class="payment-countdown-card">
+    <div class="payment-countdown-label">Auto payment simulation</div>
+    <div class="payment-countdown-value-wrap">
+      <span id="payment-countdown-value">{{ payment_countdown_seconds }}</span>
+    </div>
+    <div class="payment-countdown-subtitle">Simulating payment in seconds</div>
+  </div>
+</div>
+
+<style>
+  #payment-countdown-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 28px;
+    pointer-events: none;
+  }
+
+  .payment-countdown-card {
+    min-width: 320px;
+    max-width: calc(100vw - 32px);
+    padding: 18px 24px;
+    border-radius: 18px;
+    background: rgba(17, 24, 39, 0.96);
+    color: #ffffff;
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    text-align: center;
+    backdrop-filter: blur(10px);
+    animation: paymentCountdownPulse 1s infinite alternate ease-in-out;
+  }
+
+  .payment-countdown-label {
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.9;
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+
+  .payment-countdown-value-wrap {
+    font-size: clamp(64px, 11vw, 128px);
+    line-height: 1;
+    font-weight: 800;
+    color: #facc15;
+    text-shadow: 0 0 30px rgba(250, 204, 21, 0.35);
+  }
+
+  .payment-countdown-subtitle {
+    margin-top: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    opacity: 0.9;
+  }
+
+  @keyframes paymentCountdownPulse {
+    from {
+      transform: translateY(0) scale(1);
+    }
+    to {
+      transform: translateY(2px) scale(1.02);
+    }
+  }
+
+  @media (max-width: 576px) {
+    #payment-countdown-overlay {
+      padding-top: 16px;
+    }
+
+    .payment-countdown-card {
+      min-width: 0;
+      width: calc(100vw - 24px);
+      padding: 16px 18px;
+    }
+  }
+</style>
+
 <!-- Razorpay Checkout Script -->
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
@@ -155,7 +232,7 @@
   var paymentHandled = false;
   var paymentCountdownValue = paymentCountdownSeconds;
 
-  var countdownBox = document.getElementById('payment-countdown-box');
+  var countdownOverlay = document.getElementById('payment-countdown-overlay');
   var countdownValueEl = document.getElementById('payment-countdown-value');
   var payButton = document.getElementById('rzp-button1');
 
@@ -199,8 +276,8 @@
     if (countdownValueEl) {
       countdownValueEl.textContent = paymentCountdownValue;
     }
-    if (countdownBox) {
-      countdownBox.classList.add('d-none');
+    if (countdownOverlay) {
+      countdownOverlay.classList.add('d-none');
     }
   }
 
@@ -210,8 +287,8 @@
     }
 
     resetCountdown();
-    if (countdownBox) {
-      countdownBox.classList.remove('d-none');
+    if (countdownOverlay) {
+      countdownOverlay.classList.remove('d-none');
     }
 
     paymentCountdownInterval = window.setInterval(function () {
@@ -301,8 +378,12 @@
   document.getElementById('rzp-button1').onclick = function (e) {
     e.preventDefault();
     paymentHandled = false;
-    rzp1.open();
     startCountdown();
+    try {
+      rzp1.open();
+    } catch (error) {
+      console.error('Razorpay checkout failed to open:', error);
+    }
   }
 
   function handlePaymentSuccess(response) {
