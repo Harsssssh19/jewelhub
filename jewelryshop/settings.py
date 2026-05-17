@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -109,9 +110,14 @@ if not database_url:
     if db_name and db_user and db_password and db_host:
         database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
+if not database_url:
+    raise ImproperlyConfigured(
+        'DATABASE_URL is required for Supabase deployment. Set DATABASE_URL or the DB_* fallback variables.'
+    )
+
 DATABASES = {
     'default': dj_database_url.parse(
-        database_url or 'postgresql://postgres:postgres@localhost:5432/jewelhub',
+        database_url,
         conn_max_age=600,
         ssl_require=os.getenv('DB_SSL_REQUIRE', 'True').lower() == 'true',
     )
