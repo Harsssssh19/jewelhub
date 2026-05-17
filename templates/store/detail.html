@@ -23,11 +23,11 @@
               <div class="row m-sm-0">
                 
                 <div class="col-sm-12 order-1 order-sm-2">
-                  <div class="owl-carousel product-slider" data-slider-id="1">
+                  <div class="product-main-image">
                     {% if product.product_image %}
-                      <a class="d-block" href="{{product.product_image.url}}" data-lightbox="product" title="{{product.title}}"><img class="img-fluid" src="{{product.product_image.url}}" alt="{{product.title}}" loading="eager" decoding="async"></a>
-                      {% else %}
-                      <a class="d-block" href="{% static 'img/product-detail-1.jpg' %}" data-lightbox="product" title="{{product.title}}"><img class="img-fluid" src="{% static 'img/product-detail-1.jpg' %}" alt="{{product.title}}" loading="eager" decoding="async"></a>
+                      <a class="d-block" href="{{ product.product_image.url }}" data-lightbox="product" title="{{ product.title }}"><img class="img-fluid" src="{{ product.product_image.url }}" alt="{{ product.title }}" loading="eager" decoding="async" onerror="this.onerror=null;this.src='{% static 'img/product-detail-1.jpg' %}';this.parentNode.href='{% static 'img/product-detail-1.jpg' %}';"></a>
+                    {% else %}
+                      <a class="d-block" href="{% static 'img/product-detail-1.jpg' %}" data-lightbox="product" title="{{ product.title }}"><img class="img-fluid" src="{% static 'img/product-detail-1.jpg' %}" alt="{{ product.title }}" loading="eager" decoding="async"></a>
                     {% endif %}
                   </div>
                 </div>
@@ -140,9 +140,9 @@
                     <div class="d-block mb-3 position-relative">
                       <a class="d-block" href="{% url 'store:product-detail' rp.slug %}">
                         {% if rp.product_image %}
-                          <img class="img-fluid w-100" src="{{rp.product_image.url}}" alt="{{rp.title}}" loading="lazy" decoding="async">
+                          <img class="img-fluid w-100" src="{{ rp.product_image.url }}" alt="{{ rp.title }}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='{% static 'img/product-1.jpg' %}';">
                         {% else %}
-                        <img class="img-fluid w-100" src="{% static 'img/product-1.jpg' %}" alt="{{rp.title}}" loading="lazy" decoding="async">
+                          <img class="img-fluid w-100" src="{% static 'img/product-1.jpg' %}" alt="{{ rp.title }}" loading="lazy" decoding="async">
                         {% endif %}
                       </a>
 
