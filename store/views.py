@@ -3,6 +3,7 @@ import razorpay
 import json
 import hmac
 import hashlib
+import uuid
 from django.contrib.auth.models import User
 from store.models import Address, Cart, Category, Order, Product, Payment
 from django.shortcuts import redirect, render, get_object_or_404
@@ -285,6 +286,32 @@ def process_cod_order(request, cart_items, address):
         return redirect('store:cart')
 
 
+def _create_paid_orders(request, cart_items, address, *, razorpay_order_id, razorpay_payment_id, razorpay_signature):
+    user = request.user
+
+    for cart_item in cart_items:
+        order = Order(
+            user=user,
+            address=address,
+            product=cart_item.product,
+            quantity=cart_item.quantity,
+            payment_status=True,
+            razorpay_order_id=razorpay_order_id,
+            razorpay_payment_id=razorpay_payment_id,
+            razorpay_signature=razorpay_signature,
+        )
+        order.save()
+        send_order_email(order, status_label="Payment received and order placed")
+        send_order_admin_alert(order, action_label="New paid order placed")
+        cart_item.delete()
+
+
+def _clear_payment_session(request):
+    for key in ('cart_items', 'address_id', 'total_amount', 'razorpay_order_id'):
+        if key in request.session:
+            del request.session[key]
+
+
 @login_required
 def payment(request):
     """Display payment page with Razorpay checkout"""
@@ -331,6 +358,8 @@ def payment(request):
             'cart_items': cart_items,
             'address': address,
             'total_amount': total_amount,
+            'payment_countdown_seconds': settings.PAYMENT_SIMULATION_SECONDS,
+            'enable_payment_simulation': settings.ENABLE_PAYMENT_SIMULATION,
         }
         
         return render(request, 'store/payment.html', context)
@@ -354,17 +383,23 @@ def payment_verify(request):
         razorpay_order_id = data.get('razorpay_order_id')
         razorpay_payment_id = data.get('razorpay_payment_id')
         razorpay_signature = data.get('razorpay_signature')
+        simulate_payment = data.get('simulate_payment', False)
+
+        if simulate_payment:
+            razorpay_payment_id = razorpay_payment_id or f'sim_{uuid.uuid4().hex}'
+            razorpay_signature = razorpay_signature or 'SIMULATED'
         
-        # Verify signature
-        signature_data = f'{razorpay_order_id}|{razorpay_payment_id}'
-        expected_signature = hmac.new(
-            settings.RAZORPAY_SECRET_KEY.encode(),
-            signature_data.encode(),
-            hashlib.sha256
-        ).hexdigest()
-        
-        if expected_signature != razorpay_signature:
-            return JsonResponse({'error': 'Payment verification failed'}, status=400)
+        if not simulate_payment:
+            # Verify signature
+            signature_data = f'{razorpay_order_id}|{razorpay_payment_id}'
+            expected_signature = hmac.new(
+                settings.RAZORPAY_SECRET_KEY.encode(),
+                signature_data.encode(),
+                hashlib.sha256
+            ).hexdigest()
+            
+            if expected_signature != razorpay_signature:
+                return JsonResponse({'error': 'Payment verification failed'}, status=400)
         
         # Get cart data from session
         user = request.user
@@ -379,31 +414,17 @@ def payment_verify(request):
         cart_items = Cart.objects.filter(id__in=cart_item_ids, user=user)
         
         # Create orders and update payment status
-        for cart_item in cart_items:
-            order = Order(
-                user=user,
-                address=address,
-                product=cart_item.product,
-                quantity=cart_item.quantity,
-                payment_status=True,
-                razorpay_order_id=razorpay_order_id,
-                razorpay_payment_id=razorpay_payment_id,
-                razorpay_signature=razorpay_signature
-            )
-            order.save()
-            send_order_email(order, status_label="Payment received and order placed")
-            send_order_admin_alert(order, action_label="New paid order placed")
-            cart_item.delete()
+        _create_paid_orders(
+            request,
+            cart_items,
+            address,
+            razorpay_order_id=razorpay_order_id,
+            razorpay_payment_id=razorpay_payment_id,
+            razorpay_signature=razorpay_signature,
+        )
         
         # Clear session
-        if 'cart_items' in request.session:
-            del request.session['cart_items']
-        if 'address_id' in request.session:
-            del request.session['address_id']
-        if 'total_amount' in request.session:
-            del request.session['total_amount']
-        if 'razorpay_order_id' in request.session:
-            del request.session['razorpay_order_id']
+        _clear_payment_session(request)
         
         return JsonResponse({'success': True, 'redirect_url': '/orders/'})
     

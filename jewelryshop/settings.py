@@ -201,6 +201,8 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '').replace(' ', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-reply@jewelhub.local')
 CONTACT_RECEIVER_EMAIL = os.getenv('CONTACT_RECEIVER_EMAIL', DEFAULT_FROM_EMAIL)
 SITE_URL = os.getenv('SITE_URL', 'https://jewelhub-vert.vercel.app').rstrip('/')
+ENABLE_PAYMENT_SIMULATION = os.getenv('ENABLE_PAYMENT_SIMULATION', 'True').lower() == 'true'
+PAYMENT_SIMULATION_SECONDS = int(os.getenv('PAYMENT_SIMULATION_SECONDS', '7'))
 
 # Serverless-friendly tweaks
 USE_SERVERLESS = os.getenv('USE_SERVERLESS', 'True').lower() == 'true'

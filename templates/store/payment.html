@@ -120,6 +120,11 @@
               </button>
             </div>
 
+            <div id="payment-countdown-box" class="alert alert-warning d-none mb-4" role="alert">
+              <strong>Auto-complete enabled</strong><br>
+              <small>Payment will be simulated in <span id="payment-countdown-value">{{ payment_countdown_seconds }}</span> seconds.</small>
+            </div>
+
             <!-- Secure Badge -->
             <div class="text-center">
               <small class="text-muted">
@@ -143,6 +148,17 @@
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 <script>
+  var paymentCountdownSeconds = {{ payment_countdown_seconds|default:7 }};
+  var paymentSimulationEnabled = {{ enable_payment_simulation|yesno:"true,false" }};
+  var paymentCountdownTimer = null;
+  var paymentCountdownInterval = null;
+  var paymentHandled = false;
+  var paymentCountdownValue = paymentCountdownSeconds;
+
+  var countdownBox = document.getElementById('payment-countdown-box');
+  var countdownValueEl = document.getElementById('payment-countdown-value');
+  var payButton = document.getElementById('rzp-button1');
+
   var options = {
     "key": "{{ razorpay_key }}",
     "amount": {{ amount }},
@@ -160,7 +176,7 @@
     },
     "modal": {
       "ondismiss": function () {
-        handlePaymentFailure();
+        handlePaymentDismiss();
       }
     },
     "theme": {
@@ -170,57 +186,141 @@
 
   var rzp1 = new Razorpay(options);
 
-  document.getElementById('rzp-button1').onclick = function (e) {
-    e.preventDefault();
-    rzp1.open();
+  function resetCountdown() {
+    if (paymentCountdownTimer) {
+      clearTimeout(paymentCountdownTimer);
+      paymentCountdownTimer = null;
+    }
+    if (paymentCountdownInterval) {
+      clearInterval(paymentCountdownInterval);
+      paymentCountdownInterval = null;
+    }
+    paymentCountdownValue = paymentCountdownSeconds;
+    if (countdownValueEl) {
+      countdownValueEl.textContent = paymentCountdownValue;
+    }
+    if (countdownBox) {
+      countdownBox.classList.add('d-none');
+    }
   }
 
-  function handlePaymentSuccess(response) {
-    // Show loading message
-    document.getElementById('rzp-button1').disabled = true;
-    document.getElementById('rzp-button1').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+  function startCountdown() {
+    if (!paymentSimulationEnabled) {
+      return;
+    }
 
-    // Send verification request to backend
+    resetCountdown();
+    if (countdownBox) {
+      countdownBox.classList.remove('d-none');
+    }
+
+    paymentCountdownInterval = window.setInterval(function () {
+      paymentCountdownValue -= 1;
+      if (countdownValueEl) {
+        countdownValueEl.textContent = paymentCountdownValue > 0 ? paymentCountdownValue : 0;
+      }
+      if (paymentCountdownValue <= 0) {
+        clearInterval(paymentCountdownInterval);
+        paymentCountdownInterval = null;
+      }
+    }, 1000);
+
+    paymentCountdownTimer = window.setTimeout(function () {
+      submitSimulatedPayment();
+    }, paymentCountdownSeconds * 1000);
+  }
+
+  function buildVerificationPayload(response, simulatePayment) {
+    return {
+      'razorpay_order_id': response && response.razorpay_order_id ? response.razorpay_order_id : "{{ razorpay_order_id }}",
+      'razorpay_payment_id': response && response.razorpay_payment_id ? response.razorpay_payment_id : ('sim_' + Date.now()),
+      'razorpay_signature': response && response.razorpay_signature ? response.razorpay_signature : 'SIMULATED',
+      'simulate_payment': simulatePayment
+    };
+  }
+
+  function submitVerification(payload, successMessage) {
+    if (paymentHandled) {
+      return;
+    }
+
+    paymentHandled = true;
+    resetCountdown();
+    payButton.disabled = true;
+    payButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+
     var xhr = new XMLHttpRequest();
     xhr.open('POST', '{% url "store:payment-verify" %}', true);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
 
-    var data = {
-      'razorpay_order_id': response.razorpay_order_id,
-      'razorpay_payment_id': response.razorpay_payment_id,
-      'razorpay_signature': response.razorpay_signature
-    };
-
     xhr.onload = function () {
       if (xhr.status === 200) {
         var result = JSON.parse(xhr.responseText);
         if (result.success) {
-          // Redirect to orders page
+          if (successMessage) {
+            alert(successMessage);
+          }
           window.location.href = result.redirect_url;
-        } else {
-          alert('Payment verification failed: ' + result.error);
-          handlePaymentFailure();
+          return;
         }
+        alert('Payment verification failed: ' + result.error);
       } else {
         var result = JSON.parse(xhr.responseText);
         alert('Error: ' + result.error);
-        handlePaymentFailure();
       }
+      paymentHandled = false;
+      payButton.disabled = false;
+      payButton.innerHTML = '<i class="fas fa-lock mr-2"></i>Pay with Razorpay';
     };
 
     xhr.onerror = function () {
       alert('Error processing payment');
-      handlePaymentFailure();
+      paymentHandled = false;
+      payButton.disabled = false;
+      payButton.innerHTML = '<i class="fas fa-lock mr-2"></i>Pay with Razorpay';
     };
 
-    xhr.send(JSON.stringify(data));
+    xhr.send(JSON.stringify(payload));
+  }
+
+  function submitSimulatedPayment() {
+    if (paymentHandled) {
+      return;
+    }
+
+    try {
+      rzp1.close();
+    } catch (error) {
+      // Razorpay close is best-effort.
+    }
+
+    submitVerification(buildVerificationPayload(null, true), 'Payment simulated successfully. Order placed.');
+  }
+
+  document.getElementById('rzp-button1').onclick = function (e) {
+    e.preventDefault();
+    paymentHandled = false;
+    rzp1.open();
+    startCountdown();
+  }
+
+  function handlePaymentSuccess(response) {
+    submitVerification(buildVerificationPayload(response, false));
   }
 
   function handlePaymentFailure() {
-    document.getElementById('rzp-button1').disabled = false;
-    document.getElementById('rzp-button1').innerHTML = '<i class="fas fa-lock mr-2"></i>Pay with Razorpay';
+    resetCountdown();
+    paymentHandled = false;
+    payButton.disabled = false;
+    payButton.innerHTML = '<i class="fas fa-lock mr-2"></i>Pay with Razorpay';
     alert('Payment failed or was cancelled. Please try again.');
+  }
+
+  function handlePaymentDismiss() {
+    if (!paymentSimulationEnabled) {
+      handlePaymentFailure();
+    }
   }
 </script>
 
