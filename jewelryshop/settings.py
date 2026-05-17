@@ -29,7 +29,7 @@ load_env_file(BASE_DIR / ".env")
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-3%y3laftm62q0zaj+s7#p-xqq9(&#q+)s8)p-&#&bz*0$!xu$0'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-3%y3laftm62q0zaj+s7#p-xqq9(&#q+)s8)p-&#&bz*0$!xu$0')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
@@ -39,28 +39,11 @@ def parse_hosts(raw_hosts):
     return [host.strip() for host in raw_hosts.split(',') if host.strip()]
 
 
-ALLOWED_HOSTS = parse_hosts(os.getenv('ALLOWED_HOSTS', ''))
+ALLOWED_HOSTS = ['*']
 
-# Railway provides public domain values via env vars; include them automatically.
-railway_public_domain = os.getenv('RAILWAY_PUBLIC_DOMAIN', '').strip()
-if railway_public_domain and railway_public_domain not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append(railway_public_domain)
-
-railway_static_url = os.getenv('RAILWAY_STATIC_URL', '').strip()
-if railway_static_url:
-    railway_host = railway_static_url.replace('https://', '').replace('http://', '').strip('/')
-    if railway_host and railway_host not in ALLOWED_HOSTS:
-        ALLOWED_HOSTS.append(railway_host)
-
-if DEBUG and not ALLOWED_HOSTS:
-    ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
-
+# CSRF trusted origins when using explicit hosts. When ALLOWED_HOSTS is '*'
+# leave CSRF_TRUSTED_ORIGINS empty to avoid accidental host concatenation.
 CSRF_TRUSTED_ORIGINS = []
-for host in ALLOWED_HOSTS:
-    if host.startswith('http://') or host.startswith('https://'):
-        CSRF_TRUSTED_ORIGINS.append(host.rstrip('/'))
-    else:
-        CSRF_TRUSTED_ORIGINS.append(f'https://{host}')
 
 
 # Application definition
@@ -198,6 +181,17 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '').replace(' ', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-reply@jewelhub.local')
 CONTACT_RECEIVER_EMAIL = os.getenv('CONTACT_RECEIVER_EMAIL', DEFAULT_FROM_EMAIL)
 
+# Serverless-friendly tweaks
+USE_SERVERLESS = os.getenv('USE_SERVERLESS', 'True').lower() == 'true'
+if USE_SERVERLESS:
+    # Respect proxy headers from serverless platforms
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False').lower() == 'true'
+    # Use whitenoise optimized storage for static files in serverless environments
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 JAZZMIN_SETTINGS = {
     "site_title": "Jewellery Admin",
     "site_header": "Jewellery Dashboard",
@@ -207,7 +201,7 @@ JAZZMIN_SETTINGS = {
     "theme": "darkly",
 }
 
-# Razorpay Configuration
-RAZORPAY_KEY_ID = 'rzp_test_VQhEfe2NCXbbwI'
-RAZORPAY_SECRET_KEY = '2ibreCYL78DA3kjOhobCvz0f'
-RAZORPAY_CURRENCY = 'INR'
+# Razorpay Configuration (use env vars; keep empty defaults for safety)
+RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'rzp_test_VQhEfe2NCXbbwI')
+RAZORPAY_SECRET_KEY = os.getenv('RAZORPAY_SECRET_KEY', '2ibreCYL78DA3kjOhobCvz0f')
+RAZORPAY_CURRENCY = os.getenv('RAZORPAY_CURRENCY', 'INR')
