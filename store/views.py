@@ -195,8 +195,19 @@ def add_to_cart(request):
     else:
         Cart.objects.create(user=user, product=product)
         set_cart_count_for_request(request, get_cart_count_for_request(request) + 1)
-    
-    return redirect('store:cart')
+
+    cart_count = get_cart_count_for_request(request)
+    is_ajax_request = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+    if is_ajax_request:
+        return JsonResponse({
+            'success': True,
+            'cart_count': cart_count,
+            'message': 'Added to cart',
+        })
+
+    redirect_target = request.META.get('HTTP_REFERER') or '/cart/'
+    return redirect(redirect_target)
 
 
 @login_required

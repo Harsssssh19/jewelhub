@@ -32,7 +32,7 @@
                   </button>
                 </li>
                 {% if request.user.is_authenticated %}
-                  <li class="nav-item"><a class="nav-link" href="{% url 'store:cart' %}"><i class="fas fa-dolly-flatbed mr-1 text-gray"></i>Cart<small class="text-gray">({{ cart_count|default:0 }})</small></a></li>
+                  <li class="nav-item"><a class="nav-link" href="{% url 'store:cart' %}"><i class="fas fa-dolly-flatbed mr-1 text-gray"></i>Cart<small id="cartCountBadge" class="text-gray">({{ cart_count|default:0 }})</small></a></li>
                   <li class="nav-item"><a class="nav-link" href="#"><i class="far fa-heart mr-1"></i><small class="text-gray"> (0)</small></a></li>
                   <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" id="accountDropdown" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-user-alt mr-1 text-gray"></i>My Account</a>

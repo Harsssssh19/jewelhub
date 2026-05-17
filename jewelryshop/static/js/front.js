@@ -1,4 +1,5 @@
 $(function () {
+    var $cartCountBadge = $('#cartCountBadge');
 
 
     /* ===============================================================
@@ -67,6 +68,47 @@ $(function () {
         =============================================================== */
       $('a[href="#"]').on('click', function (e) {
          e.preventDefault();
+      });
+
+
+      /* ===============================================================
+           ASYNC ADD TO CART
+        =============================================================== */
+      $(document).on('submit', 'form[action*="add-to-cart"]', function (e) {
+          e.preventDefault();
+
+          var $form = $(this);
+          var actionUrl = $form.attr('action');
+          var method = ($form.attr('method') || 'get').toUpperCase();
+
+          $.ajax({
+              url: actionUrl,
+              method: method,
+              data: $form.serialize(),
+              headers: {
+                  'X-Requested-With': 'XMLHttpRequest'
+              },
+              success: function (response) {
+                  if (response && typeof response.cart_count !== 'undefined' && $cartCountBadge.length) {
+                      $cartCountBadge.text('(' + response.cart_count + ')');
+                  }
+
+                  var submitButton = $form.find('button[type="submit"]');
+                  var originalText = submitButton.data('original-text');
+                  if (!originalText) {
+                      originalText = submitButton.text();
+                      submitButton.data('original-text', originalText);
+                  }
+
+                  submitButton.text('Added');
+                  window.setTimeout(function () {
+                      submitButton.text(submitButton.data('original-text') || originalText);
+                  }, 1200);
+              },
+              error: function () {
+                  window.location.href = actionUrl + '?' + $form.serialize();
+              }
+          });
       });
 
 
