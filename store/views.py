@@ -17,7 +17,12 @@ from django.contrib.auth import logout as auth_logout
 from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.http import JsonResponse
-from django.db.models import Q
+from django.db.models import Q, F, Sum, DecimalField, ExpressionWrapper
+from .context_preprocessors import (
+    clear_cart_count_for_request,
+    get_cart_count_for_request,
+    set_cart_count_for_request,
+)
 from .email_utils import (
     send_order_admin_alert,
     send_order_email,
@@ -31,8 +36,12 @@ from .email_utils import (
 # Create your views here.
 
 def home(request):
-    categories = Category.objects.filter(is_active=True, is_featured=True)[:3]
-    products = Product.objects.filter(is_active=True, is_featured=True)[:8]
+    categories = Category.objects.filter(is_active=True, is_featured=True).only('title', 'slug', 'category_image')[:3]
+    products = (
+        Product.objects.filter(is_active=True, is_featured=True)
+        .select_related('category')
+        .only('title', 'slug', 'price', 'product_image', 'category__slug')[:8]
+    )
     context = {
         'categories': categories,
         'products': products,
@@ -41,8 +50,26 @@ def home(request):
 
 
 def detail(request, slug):
-    product = get_object_or_404(Product, slug=slug)
-    related_products = Product.objects.exclude(id=product.id).filter(is_active=True, category=product.category)
+    product = get_object_or_404(
+        Product.objects.select_related('category').only(
+            'title',
+            'slug',
+            'sku',
+            'short_description',
+            'detail_description',
+            'product_image',
+            'price',
+            'category__slug',
+            'category__title',
+        ),
+        slug=slug,
+    )
+    related_products = (
+        Product.objects.exclude(id=product.id)
+        .filter(is_active=True, category=product.category)
+        .select_related('category')
+        .only('title', 'slug', 'price', 'product_image', 'category__slug')
+    )
     context = {
         'product': product,
         'related_products': related_products,
@@ -52,14 +79,18 @@ def detail(request, slug):
 
 
 def all_categories(request):
-    categories = Category.objects.filter(is_active=True)
+    categories = Category.objects.filter(is_active=True).only('title', 'slug', 'category_image')
     return render(request, 'store/categories.html', {'categories':categories})
 
 
 def category_products(request, slug):
-    category = get_object_or_404(Category, slug=slug)
-    products = Product.objects.filter(is_active=True, category=category)
-    categories = Category.objects.filter(is_active=True)
+    category = get_object_or_404(Category.objects.only('id', 'title', 'slug'), slug=slug)
+    products = (
+        Product.objects.filter(is_active=True, category=category)
+        .select_related('category')
+        .only('title', 'slug', 'price', 'product_image', 'category__slug')
+    )
+    categories = Category.objects.filter(is_active=True).only('title', 'slug')
     context = {
         'category': category,
         'products': products,
@@ -88,8 +119,12 @@ class RegistrationView(View):
 
 @login_required
 def profile(request):
-    addresses = Address.objects.filter(user=request.user)
-    orders = Order.objects.filter(user=request.user)
+    addresses = Address.objects.filter(user=request.user).only('locality', 'city', 'state')
+    orders = (
+        Order.objects.filter(user=request.user)
+        .select_related('product')
+        .only('status', 'ordered_date', 'quantity', 'product__title')
+    )
     return render(request, 'account/profile.html', {'addresses':addresses, 'orders':orders})
 
 
@@ -152,13 +187,14 @@ def add_to_cart(request):
     product = get_object_or_404(Product, id=product_id)
 
     # Check whether the Product is alread in Cart or Not
-    item_already_in_cart = Cart.objects.filter(product=product_id, user=user)
-    if item_already_in_cart:
-        cp = get_object_or_404(Cart, product=product_id, user=user)
+    cart_item = Cart.objects.filter(product=product, user=user).first()
+    if cart_item:
+        cp = cart_item
         cp.quantity += 1
         cp.save()
     else:
-        Cart(user=user, product=product).save()
+        Cart.objects.create(user=user, product=product)
+        set_cart_count_for_request(request, get_cart_count_for_request(request) + 1)
     
     return redirect('store:cart')
 
@@ -166,20 +202,25 @@ def add_to_cart(request):
 @login_required
 def cart(request):
     user = request.user
-    cart_products = Cart.objects.filter(user=user)
+    cart_products = (
+        Cart.objects.filter(user=user)
+        .select_related('product')
+        .only('quantity', 'product__title', 'product__slug', 'product__price', 'product__product_image')
+    )
 
     # Display Total on Cart Page
-    amount = decimal.Decimal(0)
     shipping_amount = decimal.Decimal(10)
-    # using list comprehension to calculate total amount based on quantity and shipping
-    cp = [p for p in Cart.objects.all() if p.user==user]
-    if cp:
-        for p in cp:
-            temp_amount = (p.quantity * p.product.price)
-            amount += temp_amount
+    amount = cart_products.aggregate(
+        total=Sum(
+            ExpressionWrapper(
+                F('quantity') * F('product__price'),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            )
+        )
+    )['total'] or decimal.Decimal(0)
 
     # Customer Addresses
-    addresses = Address.objects.filter(user=user)
+    addresses = Address.objects.filter(user=user).only('locality', 'city', 'state')
 
     context = {
         'cart_products': cart_products,
@@ -194,8 +235,9 @@ def cart(request):
 @login_required
 def remove_cart(request, cart_id):
     if request.method == 'GET':
-        c = get_object_or_404(Cart, id=cart_id)
+        c = get_object_or_404(Cart, id=cart_id, user=request.user)
         c.delete()
+        set_cart_count_for_request(request, max(get_cart_count_for_request(request) - 1, 0))
         messages.success(request, "Product removed from Cart.")
     return redirect('store:cart')
 
@@ -203,7 +245,7 @@ def remove_cart(request, cart_id):
 @login_required
 def plus_cart(request, cart_id):
     if request.method == 'GET':
-        cp = get_object_or_404(Cart, id=cart_id)
+        cp = get_object_or_404(Cart, id=cart_id, user=request.user)
         cp.quantity += 1
         cp.save()
     return redirect('store:cart')
@@ -212,10 +254,11 @@ def plus_cart(request, cart_id):
 @login_required
 def minus_cart(request, cart_id):
     if request.method == 'GET':
-        cp = get_object_or_404(Cart, id=cart_id)
+        cp = get_object_or_404(Cart, id=cart_id, user=request.user)
         # Remove the Product if the quantity is already 1
         if cp.quantity == 1:
             cp.delete()
+            set_cart_count_for_request(request, max(get_cart_count_for_request(request) - 1, 0))
         else:
             cp.quantity -= 1
             cp.save()
@@ -242,11 +285,15 @@ def checkout(request):
         return redirect('store:cart')
     
     # Calculate total amount
-    total_amount = decimal.Decimal(0)
     shipping_amount = decimal.Decimal(10)
-    for item in cart_items:
-        total_amount += (item.quantity * item.product.price)
-    
+    total_amount = cart_items.aggregate(
+        total=Sum(
+            ExpressionWrapper(
+                F('quantity') * F('product__price'),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            )
+        )
+    )['total'] or decimal.Decimal(0)
     total_amount += shipping_amount
     
     # Store in session for payment processing
@@ -279,6 +326,7 @@ def process_cod_order(request, cart_items, address):
             send_order_admin_alert(order, action_label="New COD order placed")
             cart_item.delete()
         
+        clear_cart_count_for_request(request)
         messages.success(request, "Order placed successfully! You will pay on delivery.")
         return redirect('store:orders')
     except Exception as e:
@@ -328,7 +376,11 @@ def payment(request):
     
     try:
         address = Address.objects.get(id=address_id, user=user)
-        cart_items = Cart.objects.filter(id__in=cart_item_ids, user=user)
+        cart_items = (
+            Cart.objects.filter(id__in=cart_item_ids, user=user)
+            .select_related('product')
+            .only('quantity', 'product__title', 'product__slug', 'product__price', 'product__product_image')
+        )
         
         if not cart_items.exists():
             messages.error(request, "Cart items not found.")
@@ -405,13 +457,12 @@ def payment_verify(request):
         user = request.user
         cart_item_ids = request.session.get('cart_items', [])
         address_id = request.session.get('address_id')
-        total_amount = decimal.Decimal(request.session.get('total_amount', 0))
         
         if not cart_item_ids or not address_id:
             return JsonResponse({'error': 'Session expired'}, status=400)
         
         address = Address.objects.get(id=address_id, user=user)
-        cart_items = Cart.objects.filter(id__in=cart_item_ids, user=user)
+        cart_items = Cart.objects.filter(id__in=cart_item_ids, user=user).select_related('product')
         
         # Create orders and update payment status
         _create_paid_orders(
@@ -425,6 +476,7 @@ def payment_verify(request):
         
         # Clear session
         _clear_payment_session(request)
+        clear_cart_count_for_request(request)
         
         return JsonResponse({'success': True, 'redirect_url': '/orders/'})
     
@@ -441,7 +493,12 @@ def payment_failure(request):
 
 @login_required
 def orders(request):
-    all_orders = Order.objects.filter(user=request.user).order_by('-ordered_date')
+    all_orders = (
+        Order.objects.filter(user=request.user)
+        .select_related('product')
+        .only('status', 'ordered_date', 'quantity', 'product__title', 'product__product_image')
+        .order_by('-ordered_date')
+    )
     return render(request, 'store/orders.html', {'orders': all_orders})
 
 
@@ -449,7 +506,16 @@ def shop(request):
     query = request.GET.get('q', '').strip()
     category_slug = request.GET.get('category', '').strip()
 
-    products = Product.objects.filter(is_active=True)
+    products = Product.objects.filter(is_active=True).select_related('category').only(
+        'title',
+        'slug',
+        'price',
+        'product_image',
+        'short_description',
+        'sku',
+        'category__title',
+        'category__slug',
+    )
 
     if query:
         products = products.filter(
@@ -462,12 +528,12 @@ def shop(request):
     selected_category = None
     if category_slug:
         products = products.filter(category__slug=category_slug)
-        selected_category = Category.objects.filter(is_active=True, slug=category_slug).first()
+        selected_category = Category.objects.filter(is_active=True, slug=category_slug).only('title', 'slug').first()
 
-    categories = Category.objects.filter(is_active=True)
+    categories = Category.objects.filter(is_active=True).only('title', 'slug')
 
     context = {
-        'products': products.order_by('-created_at'),
+        'products': products.select_related('category').order_by('-created_at'),
         'categories': categories,
         'query': query,
         'selected_category': selected_category,

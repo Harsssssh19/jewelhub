@@ -51,9 +51,9 @@
                         <div class="media align-items-center">
 
                           {% if cart_product.product.product_image %}
-                            <a class="reset-anchor d-block animsition-link" href="{% url 'store:product-detail' cart_product.product.slug %}"><img src="{{cart_product.product.product_image.url}}" alt="{{cart_product.product.title}}" width="70"/></a>
+                            <a class="reset-anchor d-block animsition-link" href="{% url 'store:product-detail' cart_product.product.slug %}"><img src="{{cart_product.product.product_image.url}}" alt="{{cart_product.product.title}}" width="70" loading="lazy" decoding="async"/></a>
                           {% else %}
-                            <a class="reset-anchor d-block animsition-link" href="{% url 'store:product-detail' cart_product.product.slug %}"><img src="{% static 'img/product-detail-3.jpg' %}" alt="{{cart_product.product.title}}" width="70"/></a>
+                            <a class="reset-anchor d-block animsition-link" href="{% url 'store:product-detail' cart_product.product.slug %}"><img src="{% static 'img/product-detail-3.jpg' %}" alt="{{cart_product.product.title}}" width="70" loading="lazy" decoding="async"/></a>
                           {% endif %}
 
                           <div class="media-body ml-3"><strong class="h6"><a class="reset-anchor animsition-link" href="{% url 'store:product-detail' cart_product.product.slug %}">{{cart_product.product.title}}</a></strong></div>
@@ -80,74 +80,6 @@
                     </tr>
                     {% endfor %}
 
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <!-- ORDER TOTAL-->
-            <div class="col-lg-4">
-              <div class="card border-0 rounded-0 p-lg-4 bg-light">
-                <div class="card-body">
-                  <h5 class="text-uppercase mb-4">Cart total</h5>
-                  <ul class="list-unstyled mb-0">
-                    <li class="d-flex align-items-center justify-content-between"><strong class="text-uppercase small font-weight-bold">Subtotal</strong><span class="text-muted small">₹{{amount|intcomma}}</span></li>
-                    <li class="d-flex align-items-center justify-content-between"><strong class="text-uppercase small font-weight-bold">Shipping Charge</strong><span class="text-muted small">+ ₹{{shipping_amount}}</span></li>
-                    <li class="border-bottom my-2"></li>
-                    <li class="d-flex align-items-center justify-content-between mb-4"><strong class="text-uppercase small font-weight-bold">Total</strong><span>₹{{total_amount|intcomma}}</span></li>
-                    <li>
-
-                      {% comment %} <form action="#">
-                        <div class="form-group mb-0">
-                          <input class="form-control" type="text" placeholder="Enter your coupon">
-                          <button class="btn btn-dark btn-sm btn-block" type="submit"> <i class="fas fa-gift mr-2"></i>Apply coupon</button>
-                        </div>
-                      </form> {% endcomment %}
-
-                    </li>
-                  </ul>
-
-                  
-                  <h5 class="text-uppercase my-5">Select Shipping Address</h5>
-                  
-                  <form action="{% url 'store:checkout' %}" id="myform" method="GET">
-
-                    {% if addresses %}
-                      {% for address in addresses %}
-                        <div class="mb-3">
-                        <input type="radio" name="address" value="{{address.id}}" required> <strong>Address {{forloop.counter}}</strong> <br>
-                        ( {{address.locality}}, {{address.city}}, {{address.state}} )
-                        </div>
-                      {% endfor %}
-                    {% else %}
-                      <div class="alert alert-warning" role="alert">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>
-                        No addresses found. <a href="{% url 'store:add-address' %}">Add a new address</a>
-                      </div>
-                    {% endif %}
-
-                    <div class="mt-4 pt-3 border-top">
-                      <h6 class="text-uppercase mb-3">Choose Payment Method</h6>
-                      
-                      <!-- Online Payment Button -->
-                      <button type="submit" name="payment" value="online" class="btn btn-primary btn-lg btn-block mb-2" {% if not addresses %}disabled{% endif %}>
-                        <i class="fas fa-credit-card mr-2"></i>Pay Online
-                      </button>
-
-                      <!-- Cash on Delivery Button -->
-                      <button type="submit" name="payment" value="cod" class="btn btn-outline-dark btn-lg btn-block" {% if not addresses %}disabled{% endif %}>
-                        <i class="fas fa-dollar-sign mr-2"></i>Cash on Delivery
-                      </button>
-                    </div>
-
-                  </form>
-
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </section>
-        
         {% else %}
 
           <div class="text-center py-5">
@@ -159,37 +91,3 @@
 
       </div>
       {% endblock content %}
-
-      {% block payment-gateway %}
-        <!-- Include the PayPal JavaScript SDK -->
-    <script src="https://www.paypal.com/sdk/js?client-id=YOUR-PAYPAL-CLIENT-ID&currency=USD"></script>
-
-    <script>
-        // Render the PayPal button into #paypal-button-container
-        paypal.Buttons({
-
-            // Set up the transaction
-            createOrder: function(data, actions) {
-                return actions.order.create({
-                    purchase_units: [{
-                        amount: {
-                            value: '{{total_amount}}'
-                        }
-                    }]
-                });
-            },
-
-            // Finalize the transaction
-            onApprove: function(data, actions) {
-                return actions.order.capture().then(function(details) {
-                    // Show a success message to the buyer
-                    alert('Transaction completed by ' + details.payer.name.given_name + '!');
-                    // Savind Order in Database after Payment Success
-                    document.getElementById('myform').submit();
-                });
-            }
-
-
-        }).render('#paypal-button-container');
-    </script>
-      {% endblock payment-gateway %}

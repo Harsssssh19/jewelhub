@@ -1,6 +1,16 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block page_styles %}
+  <link rel="stylesheet" href="{% static 'vendor/nouislider/nouislider.min.css' %}">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap-select/css/bootstrap-select.min.css' %}">
+{% endblock page_styles %}
+
+{% block page_scripts %}
+  <script src="{% static 'vendor/nouislider/nouislider.min.js' %}"></script>
+  <script src="{% static 'vendor/bootstrap-select/js/bootstrap-select.min.js' %}"></script>
+{% endblock page_scripts %}
+
     {% block content %}
     
       <div class="container">
@@ -127,9 +137,9 @@
 
                             <a class="d-block" href="{% url 'store:product-detail' product.slug %}">
                               {% if product.product_image %}
-                                <img class="img-fluid w-100" src="{{product.product_image.url}}" alt="{{product.title}}">
+                                <img class="img-fluid w-100" src="{{product.product_image.url}}" alt="{{product.title}}" loading="lazy" decoding="async">
                               {% else %}
-                                <img class="img-fluid w-100" src="{% static 'img/product-1.jpg' %}" alt="{{product.title}}">
+                                <img class="img-fluid w-100" src="{% static 'img/product-1.jpg' %}" alt="{{product.title}}" loading="lazy" decoding="async">
                               {% endif %}
                             </a>
 

@@ -4,23 +4,27 @@ $(function () {
     /* ===============================================================
          LIGHTBOX
       =============================================================== */
-    lightbox.option({
-        'resizeDuration': 200,
-        'wrapAround': true
-    });
+    if (window.lightbox && typeof window.lightbox.option === 'function') {
+        lightbox.option({
+            'resizeDuration': 200,
+            'wrapAround': true
+        });
+    }
 
 
     /* ===============================================================
          PRODUCT SLIDER
       =============================================================== */
-    $('.product-slider').owlCarousel({
-        items: 1,
-        thumbs: true,
-        thumbImage: false,
-        thumbsPrerendered: true,
-        thumbContainerClass: 'owl-thumbs',
-        thumbItemClass: 'owl-thumb-item'
-    });
+    if ($.fn.owlCarousel && $('.product-slider').length) {
+        $('.product-slider').owlCarousel({
+            items: 1,
+            thumbs: true,
+            thumbImage: false,
+            thumbsPrerendered: true,
+            thumbContainerClass: 'owl-thumbs',
+            thumbItemClass: 'owl-thumb-item'
+        });
+    }
 
 
     /* ===============================================================
@@ -42,9 +46,11 @@ $(function () {
       /* ===============================================================
            BOOTSTRAP SELECT
         =============================================================== */
-      $('.selectpicker').on('change', function () {
-          $(this).closest('.dropdown').find('.filter-option-inner-inner').addClass('selected');
-      });
+      if ($.fn.selectpicker && $('.selectpicker').length) {
+          $('.selectpicker').on('change', function () {
+              $(this).closest('.dropdown').find('.filter-option-inner-inner').addClass('selected');
+          });
+      }
 
 
       /* ===============================================================
@@ -70,36 +76,38 @@ $(function () {
       var $searchOverlay = $('#headerSearchOverlay');
       var $searchToggle = $('.header-search-toggle');
 
-      function openHeaderSearch() {
-          $searchOverlay.addClass('is-open').attr('aria-hidden', 'false');
-          $searchToggle.attr('aria-expanded', 'true');
-          setTimeout(function () {
-              $searchOverlay.find('input[type="search"]').trigger('focus');
-          }, 120);
-      }
-
-      function closeHeaderSearch() {
-          $searchOverlay.removeClass('is-open').attr('aria-hidden', 'true');
-          $searchToggle.attr('aria-expanded', 'false');
-      }
-
-      $searchToggle.on('click', function () {
-          if ($searchOverlay.hasClass('is-open')) {
-              closeHeaderSearch();
-          } else {
-              openHeaderSearch();
+      if ($searchOverlay.length && $searchToggle.length) {
+          function openHeaderSearch() {
+              $searchOverlay.addClass('is-open').attr('aria-hidden', 'false');
+              $searchToggle.attr('aria-expanded', 'true');
+              setTimeout(function () {
+                  $searchOverlay.find('input[type="search"]').trigger('focus');
+              }, 120);
           }
-      });
 
-      $(document).on('click', '.header-search-close', function () {
-          closeHeaderSearch();
-      });
-
-      $(document).on('keydown', function (e) {
-          if (e.key === 'Escape' && $searchOverlay.hasClass('is-open')) {
-              closeHeaderSearch();
+          function closeHeaderSearch() {
+              $searchOverlay.removeClass('is-open').attr('aria-hidden', 'true');
+              $searchToggle.attr('aria-expanded', 'false');
           }
-      });
+
+          $searchToggle.on('click', function () {
+              if ($searchOverlay.hasClass('is-open')) {
+                  closeHeaderSearch();
+              } else {
+                  openHeaderSearch();
+              }
+          });
+
+          $(document).on('click', '.header-search-close', function () {
+              closeHeaderSearch();
+          });
+
+          $(document).on('keydown', function (e) {
+              if (e.key === 'Escape' && $searchOverlay.hasClass('is-open')) {
+                  closeHeaderSearch();
+              }
+          });
+      }
 
 });
 
@@ -107,9 +115,12 @@ $(function () {
 /* ===============================================================
      COUNTRY SELECT BOX FILLING
   =============================================================== */
-$.getJSON('/static/js/countries.json', function (data) {
-    $.each(data, function (key, value) {
-        var selectOption = "<option value='" + value.name + "' data-dial-code='" + value.dial_code + "'>" + value.name + "</option>";
-        $("select.country").append(selectOption);
+var $countrySelects = $('select.country');
+if ($countrySelects.length) {
+    $.getJSON('/static/js/countries.json', function (data) {
+        $.each(data, function (key, value) {
+            var selectOption = "<option value='" + value.name + "' data-dial-code='" + value.dial_code + "'>" + value.name + "</option>";
+            $countrySelects.append(selectOption);
+        });
     });
-})
+}

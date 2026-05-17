@@ -1,6 +1,14 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block page_styles %}
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap-select/css/bootstrap-select.min.css' %}">
+{% endblock page_styles %}
+
+{% block page_scripts %}
+  <script src="{% static 'vendor/bootstrap-select/js/bootstrap-select.min.js' %}"></script>
+{% endblock page_scripts %}
+
     {% block content %}
 
       <div class="container">

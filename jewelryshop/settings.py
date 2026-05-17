@@ -43,10 +43,6 @@ def parse_hosts(raw_hosts):
 
 ALLOWED_HOSTS = ['*']
 
-# CSRF trusted origins when using explicit hosts. When ALLOWED_HOSTS is '*'
-# leave CSRF_TRUSTED_ORIGINS empty to avoid accidental host concatenation.
-CSRF_TRUSTED_ORIGINS = []
-
 
 # Application definition
 
@@ -203,6 +199,7 @@ CONTACT_RECEIVER_EMAIL = os.getenv('CONTACT_RECEIVER_EMAIL', DEFAULT_FROM_EMAIL)
 SITE_URL = os.getenv('SITE_URL', 'https://jewelhub-vert.vercel.app').rstrip('/')
 ENABLE_PAYMENT_SIMULATION = os.getenv('ENABLE_PAYMENT_SIMULATION', 'True').lower() == 'true'
 PAYMENT_SIMULATION_SECONDS = int(os.getenv('PAYMENT_SIMULATION_SECONDS', '7'))
+CSRF_TRUSTED_ORIGINS = [SITE_URL] if SITE_URL else []
 
 # Serverless-friendly tweaks
 USE_SERVERLESS = os.getenv('USE_SERVERLESS', 'True').lower() == 'true'

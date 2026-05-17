@@ -53,9 +53,9 @@
                   <td class="border-0">
                     <div class="media align-items-center">
                       {% if item.product.product_image %}
-                        <img src="{{item.product.product_image.url}}" alt="{{item.product.title}}" width="50" class="mr-3">
+                        <img src="{{item.product.product_image.url}}" alt="{{item.product.title}}" width="50" class="mr-3" loading="lazy" decoding="async">
                       {% else %}
-                        <img src="{% static 'img/product-detail-3.jpg' %}" alt="{{item.product.title}}" width="50" class="mr-3">
+                        <img src="{% static 'img/product-detail-3.jpg' %}" alt="{{item.product.title}}" width="50" class="mr-3" loading="lazy" decoding="async">
                       {% endif %}
                       <div class="media-body">
                         <strong>{{item.product.title}}</strong>
@@ -236,6 +236,21 @@
   var countdownValueEl = document.getElementById('payment-countdown-value');
   var payButton = document.getElementById('rzp-button1');
 
+  function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      var cookies = document.cookie.split(';');
+      for (var i = 0; i < cookies.length; i++) {
+        var cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
   var options = {
     "key": "{{ razorpay_key }}",
     "amount": {{ amount }},
@@ -329,23 +344,30 @@
     var xhr = new XMLHttpRequest();
     xhr.open('POST', '{% url "store:payment-verify" %}', true);
     xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+    xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken') || '{{ csrf_token }}');
 
     xhr.onload = function () {
-      if (xhr.status === 200) {
-        var result = JSON.parse(xhr.responseText);
-        if (result.success) {
-          if (successMessage) {
-            alert(successMessage);
-          }
-          window.location.href = result.redirect_url;
-          return;
-        }
-        alert('Payment verification failed: ' + result.error);
-      } else {
-        var result = JSON.parse(xhr.responseText);
-        alert('Error: ' + result.error);
+      var result = null;
+
+      try {
+        result = JSON.parse(xhr.responseText);
+      } catch (parseError) {
+        result = {
+          error: xhr.status === 403
+            ? 'Payment verification was blocked by the server. Check CSRF or trusted origin settings.'
+            : ('Unexpected server response (' + xhr.status + ').')
+        };
       }
+
+      if (xhr.status === 200 && result && result.success) {
+        if (successMessage) {
+          alert(successMessage);
+        }
+        window.location.href = result.redirect_url;
+        return;
+      }
+
+      alert('Payment verification failed: ' + (result && result.error ? result.error : 'Unknown error'));
       paymentHandled = false;
       payButton.disabled = false;
       payButton.innerHTML = '<i class="fas fa-lock mr-2"></i>Pay with Razorpay';
